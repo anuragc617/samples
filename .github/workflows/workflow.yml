@@ -1,0 +1,46 @@
+on:
+  push:
+    branches:
+    - master
+name: Build and deploy .NET Core app to Linux WebApp
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@master
+    
+    - uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS_GITHUB_SECRET }}
+
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 2.2.x
+    
+    - name: Install dependencies
+      run: dotnet restore dotnetcorewebapp/aspnet-core-dotnet-core
+    
+    - name: Build
+      run: dotnet build dotnetcorewebapp/aspnet-core-dotnet-core --configuration Release --no-restore
+    
+    - name: Publish artifact
+      run: dotnet publish dotnetcorewebapp/aspnet-core-dotnet-core --configuration Release --no-build --output dotnetcorewebapp/aspnet-core-dotnet-core/publish
+    
+    - uses: azure/appservice-settings@v1
+      with:
+        app-name: anchauhLinuxWebApp
+        general-settings-json: '{"linuxFxVersion": "DOTNETCORE|2.2"}' #'General configuration settings as Key Value pairs'
+    
+    - name: Deploy to Azure WebApp
+      uses: azure/webapps-deploy@v1
+      with:
+        app-name: anchauhLinuxWebApp
+        package: dotnetcorewebapp/aspnet-core-dotnet-core/publish
+
+    - name: logout
+      run: |
+        az logout
